@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Text Editor</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="../CSS/index.css">
+		<link rel="stylesheet" href="../CSS/editor.css">
+		<script src="../CustomElements/nav.js" defer></script>
+		<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js" type="text/javascript" defer></script>
+		<script src="../Scripts/editor.js" type="text/javascript" defer></script>
+	</head>
+	<body>
+		<div id="app">
+			<!-- <c-nav></c-nav> -->
+			<main>
+				<div>
+					<div></div>
+					<div v-on:click="runCode" id="runButton">⏵</div>
+				</div>
+				<div id="editorDisplay">
+					<div>
+						<textarea id="definitionEditor" rows="24" v-model="inputDefinitionEditor" v-on:keydown="keyDown" v-on:keydown.tab="tabPressed" ref="definitionEditor" placeholder="code here"></textarea>
+						<!-- <textarea id="codeEditor" rows="12" v-model="inputCodeEdtior" v-on:keydown="keyDown" v-on:keydown.tab="tabPressed" ref="codeEditor"></textarea> -->
+					</div>
+					<div>
+						<div>{{ outputTerminal }}</div>
+						<div>{{ outputCompiledCode }}</div>
+					</div>
+				</div>
+				<div id="symbols">
+					<div v-for="symbol of symbols" v-on:click="symbolClicked($event, symbol)" v-on:contextmenu="symbolRightClicked($event, symbol)">{{ symbol }}</div>
+					<input type="text" id="keyBindInput" v-model="inputKeyBind" ref="keyBindInput" v-on:keydown.enter="bindSymbol">
+				</div>
+				<!-- <div>
+					<div v-for="i of range(100)">{{ String.fromCodePoint(i) }}</div>
+				</div> -->
+				<!-- <canvas>Virtual Keyboard</canvas> -->
+			</main>
+		</div>
+	</body>
+</html>
