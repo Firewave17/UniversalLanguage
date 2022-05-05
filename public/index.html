@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Universal Language</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="style.css">
+		<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js" type="text/javascript" defer></script>
+		<script src="app.js" type="text/javascript" defer></script>
+	</head>
+	<body>
+		<div id="app">
+			<!-- <div id="inputs">
+				<div>
+					<input v-model="inputSaveName" placeholder="filename to save">
+					<button>Save</button>
+				</div>
+				<div>
+					<input v-model="inputLoadName" placeholder="filename to load">
+					<button>Load</button>
+				</div>
+			</div> -->
+			<div id="display">
+				<div class="tabs">
+					<div v-on:click="newWindow">+</div>
+					<input v-on:keydown.enter="renameProgram" placeholder="rename">
+					<div v-for="program of programs" v-bind:style="(selectedProgram == program) ? { backgroundColor: `#7f7f7f` } : {}">
+						<div v-on:click="selectProgram(program)">{{ program.name }}</div>
+						<span v-on:click="removeProgram(program)">×</span>
+					</div>
+					<div v-on:click="uploadProgram">⭱</div>
+					<input v-on:keydown.enter="downloadProgram" placeholder="⭳">
+					<div v-on:dblclick="deleteProgram">🗑</div>
+				</div>
+				<textarea v-if="selectedProgram" id="editor"
+					rows="24"
+					v-model="selectedProgram.text"
+					v-on:keydown="keyDown"
+					v-on:keydown.tab="tabPressed"
+					ref="editor">
+				</textarea>
+				<textarea v-show="!selectedProgram" rows="24" placeholder="No tabs open"></textarea>
+				<div class="tabs">
+					<div id="runButton" v-on:click="runInTerminal">⏵</div>
+					<div id="clearButton" v-on:click="clearTerminal">×</div>
+				</div>
+				<div id="terminal">{{ outputTerminal }}</div>
+			</div>
+			<div id="symbols">
+				<div v-for="symbol of symbols" v-on:click="symbolClicked($event, symbol)" v-on:contextmenu="symbolRightClicked($event, symbol)">
+					<div>{{ symbol }}</div>
+					<div>{{ keyBindingsReverse[symbol] }}</div>
+					<div v-if="symbol in keyBindingsReverse" v-on:click="unbindSymbol(symbol)">×</div>
+				</div>
+				<input type="text" id="keyBindInput" v-model="inputKeyBind" ref="keyBindInput" v-on:keydown.enter="bindSymbol" placeholder="right click to bind">
+			</div>
+			<!-- <div>
+				<div v-for="i of range(10)">{{ String.fromCodePoint(i) }}</div>
+			</div> -->
+			<!-- <canvas>Virtual Keyboard</canvas> -->
+		</div>
+	</body>
+</html>

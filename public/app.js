@@ -1,55 +1,5 @@
-const PREDEFINED = {
-	"Print": `<Statement>(🗩<Whitespace><Expression d>)
-⋐
-	app.log(d);
-⋑`,
-	"Expression": `<Monomial>(<Number x>)
-⋐
-	return x;
-⋑
-<Monomial>(<Monomial x><Whitespace>⊙<Whitespace><Monomial y>)
-⋐
-	return x * y;
-⋑
-<Monomial>(<Monomial x><Whitespace>⊘<Whitespace><Monomial y>)
-⋐
-	return x / y;
-⋑
-<Polynomial>(<Monomial x>)
-⋐
-	return x;
-⋑
-<Polynomial>(<Polynomial x><Whitespace>⊕<Whitespace><Polynomial y>)
-⋐
-	return x + y;
-⋑
-<Expression>(<Word a>)
-⋐
-	return a;
-⋑
-<Expression>(<Polynomial x>)
-⋐
-	return x;
-⋑`,
-	"Comment": `
-<Statement>(⊗<* comment>
-)
-⋐
-	return;
-⋑`,
-	"Vector": `<Vector>(⊂<Number x>,<Number y>⊃)
-⋐
-	return {x: x, y: y};
-⋑
-<Vector>(<Vector x><Whitespace>⊕<Whitespace><Vector y>)
-⋐
-	return {x: x.x + y.x, y: x.y + y.y};
-⋑
-<Monomial>(〈<Vector v>〉)
-⋐
-	return (v.x**2 + v.y**2)**.5;
-⋑`,
-};
+const PORT = 3333;
+const ADDRESS = `http://localhost:${PORT}`;
 
 class Interpreter {
 	constructor() {
@@ -101,40 +51,6 @@ class Interpreter {
 		numberNode.addDefinition("-<Number n>", `return -n;`);
 		this.functionNodes.push(numberNode);
 
-		// var patternPrimNode = new FunctionNode("PatternPrimative");
-		// patternPrimNode.addDefinition("<Whitespace>", `return ""`);
-		// patternPrimNode.addDefinition("<Letter char>", `return char;`);
-		// patternPrimNode.addDefinition("\\<<Word type> <Word object>\\>", `
-		// 	return \`<\${type} \${object}>\`;
-		// `);
-		// patternPrimNode.addDefinition("\\<* <Word object>\\>", `
-		// 	return \`<* \${object}>\`;
-		// `);
-		// patternPrimNode.addDefinition("\\<<Word type>\\>", `
-		// 	return \`<\${type}>\`;
-		// `);
-		// patternPrimNode.addDefinition("\\[<Pattern p>|* <Word w>\\]", `
-		// 	return \`[\${p}|* w]\`;
-		// `);
-		// this.functionNodes.push(patternPrimNode);
-
-		// var patternNode = new FunctionNode("Pattern");
-		// patternNode.addDefinition(`[<PatternPrimative pp>|* P]`, `
-		// 	var string = "";
-		// 	var i = 0;
-		// 	while (true) {
-		// 		var exists = eval(\`typeof pp\${i}\`) !== "undefined";
-		// 		if (!exists) break;
-		// 		string += eval(\`pp\${i}\`);
-		// 		i++;
-		// 	}
-		// 	return string;
-		// `);
-		// patternNode.addDefinition(`(<* p>)`, `
-		// 	return p;
-		// `);
-		// this.functionNodes.push(patternNode);
-
 		var defNode = new FunctionNode("Definition");
 		defNode.addDefinition(`\\<<* funcname>\\>(<* p>)<Whitespace>⋐<* j>⋑`, `
 			var existingNode = interpreter.getNode(funcname);
@@ -153,7 +69,13 @@ class Interpreter {
 		importNode.addDefinition("⭳<* name>⭳", `
 			var string = interpreter.string;
 			var index = interpreter.index;
-			interpreter.run(PREDEFINED[name]+"~");
+			var program = app.getProgramWithName(name);
+			if (program) {
+				interpreter.run(program.text+"~");
+			} else {
+				app.getProgramFromServer(name, false);
+				app.log(\`\${name} has not been imported, try again\`);
+			}
 			interpreter.string = string;
 			interpreter.index = index;
 			return;
@@ -434,14 +356,24 @@ var app = new Vue({
 	el: "#app",
 	data: {
 		interpreter: new Interpreter(),
+
+		programs: [],
+		selectedProgram: "",
+
 		inputDefinitionEditor: "",
 		inputCodeEdtior: "",
+		inputSaveName: "",
+		inputLoadName: "",
+
 		outputCompiledCode: "",
 		outputTerminal: "> ",
+
 		keyBindings: {},
+		keyBindingsReverse: {},
 		inputKeyBind: "",
 		currentBinding: "",
-		symbols: ["⭳", "🗩", "⬡", "□", "△", "▵", "·", "〈", "〉", "⌊", "⌋", "⊂", "⊃", "⋐", "⋑", "∩", "∪", "⏵", "⏸", "⊕", "⊗", "⊙", "⊘", "«", "»", "⊏", "⊐"],
+
+		symbols: ["⭱", "⭳", "🗩", "⬡", "□", "△", "▵", "·", "〈", "〉", "⌊", "⌋", "⊂", "⊃", "⋐", "⋑", "∩", "∪", "⏵", "⏸", "⊕", "⊗", "⊙", "⊘", "«", "»", "⊏", "⊐"],
 	},
 	methods: {
 		log: function(text) {
@@ -464,15 +396,111 @@ var app = new Vue({
 		bindSymbol: function(e) {
 			e.preventDefault();
 			this.keyBindings[`${this.inputKeyBind}`] = this.currentBinding;
+			this.keyBindingsReverse[this.currentBinding] = `${this.inputKeyBind}`;
 			this.inputKeyBind = "";
 			this.$refs.editor.focus();
 		},
-		runCode: function () {
+		unbindSymbol: function(symbol) {
+			delete this.keyBindings[this.keyBindingsReverse[symbol]];
+			delete this.keyBindingsReverse[symbol];
+			this.$forceUpdate();
+		},
+		newWindow: function() {
+			var program = {
+				name: "untitled",
+				text: "",
+			}
+			this.selectedProgram = program;
+			this.programs.push(program);
+		},
+		selectProgram: function(program) {
+			this.selectedProgram = program;
+		},
+		renameProgram: function(e) {
+			this.selectedProgram.name = e.target.value;
+			e.target.value = "";
+		},
+		removeProgram: function(program) {
+			this.programs.splice(this.programs.indexOf(program), 1);
+			this.selectedProgram = null;
+			this.$forceUpdate();
+		},
+		runInTerminal: function () {
 			this.interpreter = new Interpreter();
-			this.inputDefinitionEditor = this.$refs.definitionEditor.value;
+			this.inputDefinitionEditor = this.$refs.editor.value;
 			this.interpreter.run(this.inputDefinitionEditor + "~");
 			this.outputCompiledCode = this.interpreter.compiledCode;
 			// this.interpreter.run(this.inputCodeEdtior + "~");
+		},
+		clearTerminal: function() {
+			this.outputTerminal = "> ";
+		},
+		getProgramFromServer: function(name, open=true) {
+			fetch(`${ADDRESS}/programs/${name}`).then((response) => {
+				response.json().then((data) => {
+					if (!data.length) return;
+					var program = data[0];
+					if (!this.programs.includes(program)) {
+						this.programs.push(program);
+					}
+					if (open) {
+						this.selectedProgram = program;
+					}
+				});
+			});
+		},
+		getProgramWithName: function(name) {
+			var index = this.programs.map((a)=>{return a.name}).indexOf(name);
+			if (index >= 0) return this.programs[index];
+		},
+		postProgramToServer: function(program) {
+			fetch(`${ADDRESS}/programs`, {
+				method: "POST",
+				body: JSON.stringify({
+					name: program.name,
+					text: program.text,
+				}),
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}).then((response) => {
+				
+			});
+		},
+		updateProgramToServer: function(program) {
+			if (!program._id) {
+				this.postProgramToServer(program);
+				return;
+			}
+			fetch(`${ADDRESS}/programs/${program._id}`, {
+				method: "PUT",
+				body: JSON.stringify(program),
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}).then((response) => {
+				
+			});
+		},
+		deleteProgramFromServer: function(program) {
+			if (!program._id) {
+				return;
+			}
+			fetch(`${ADDRESS}/programs/${program._id}`, {
+				method: "DELETE",
+			}).then((response) => {
+				this.removeProgram(program);
+			});
+		},
+		uploadProgram: function() {
+			this.updateProgramToServer(this.selectedProgram);
+		},
+		downloadProgram: function(e) {
+			this.getProgramFromServer(e.target.value);
+			e.target.value = "";
+		},
+		deleteProgram: function() {
+			this.deleteProgramFromServer(this.selectedProgram);
 		},
 		tabPressed: function(e) {
 			e.preventDefault();
